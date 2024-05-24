@@ -45,8 +45,8 @@ partition_acordos_l2 <- function(data) {
   )
   l2_corners_text <- c("Detalhes", "Cobranças originais", 
                        "Acréscimos", "Parcelas do acordo")
-  l2_corners <- filter(ex_acordo, character %in% l2_corners_text)
-  partition(ex_acordo, l2_corners) |>
+  l2_corners <- filter(data, character %in% l2_corners_text)
+  partition(data, l2_corners) |>
     select(name = character, cells)
 }
 
