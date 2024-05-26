@@ -6,6 +6,7 @@
 require(dplyr)
 require(tidyxl)
 require(unpivotr)
+require(tidyr)
 require(purrr)
 
 
@@ -45,13 +46,39 @@ partition_acordos_l2 <- function(data) {
   )
   l2_corners_text <- c("Detalhes", "Cobranças originais", 
                        "Acréscimos", "Parcelas do acordo")
-  l2_corners <- filter(ex_acordo, character %in% l2_corners_text)
-  partition(ex_acordo, l2_corners) |>
+  l2_corners <- filter(data, character %in% l2_corners_text)
+  partition(data, l2_corners) |>
     select(name = character, cells)
 }
 
 check_block <- function(data, type) {
   data$character[1] == type
+}
+
+tidy_detalhes <- function(cells) {
+  # arruma bloco detalhes
+  # 1 linha de saída
+  stopifnot(
+    check_block(cells, "Detalhes")
+  )
+  cells |>
+    slice(-1) |>
+    behead(direction = "left", tipo) |> 
+    select(tipo, character) |> 
+    pivot_wider(names_from = tipo, values_from = character) |>
+    janitor::clean_names() |>
+    mutate(cod_acordo = as.integer(cod_acordo),
+           efetuado_em = lubridate::dmy(efetuado_em))
+}
+
+list_pick <- function(list, pos) {
+  list[[pos]]
+}
+
+tidy_det_acordos <- function(cells) {
+  # arruma bloco detalhes a partir de cells de acordos
+  list_pick(cells, 1) |>
+    tidy_detalhes()
 }
 
 # example -----------------------------------------------------------------
@@ -70,14 +97,25 @@ data_pipe <- load_acordo_file(ex_file) |>
   partition_acordos() |>
   mutate(blocos = map(acordo_full_data, partition_acordos_l2)) |>
   select(-acordo_full_data) |>
-  tidyr::unnest_longer(blocos)
+  unnest_wider(blocos) |>
+  mutate(detalhes = map(cells, tidy_det_acordos)) |> 
+  #unnest_longer(c(name, cells)) |>
+  #rename(info = name) |>
+  unnest_wider(detalhes)
 
 # teste parcial
-
-ex_blocos <- data_pipe[[3]][[1]]
+#TODO: COBRANÇAS
+ex_cobrancas <- data_pipe$cells[[1]][[2]]
 
 # detalhes
-
-ex_blocos$cells[[1]] |>
+check_block(ex_detalhe, "Detalhes")
+ex_detalhe |>
   slice(-1) |>
+  behead(direction = "left", tipo) |> 
+  select(tipo, character) |> 
+  pivot_wider(names_from = tipo, values_from = character) |>
+  janitor::clean_names() |>
+  mutate(cod_acordo = as.integer(cod_acordo),
+         efetuado_em = lubridate::dmy(efetuado_em))
   # pegar pares de linhas e separar em 2 colunas
+data_pipe$name[1]
