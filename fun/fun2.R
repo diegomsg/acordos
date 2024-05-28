@@ -75,9 +75,11 @@ list_pick <- function(list, pos) {
   list[[pos]]
 }
 
-tidy_det_acordos <- function(cells) {
-  # arruma bloco detalhes a partir de cells de acordos
-  list_pick(cells, 1) |>
+tidy_det_acordos <- function(blocos) {
+  # arruma bloco detalhes a partir de blocos em nested list of tbl
+  # 1 tbl = 1 line
+  pull(blocos, cells) |>
+    list_pick(1) |>
     tidy_detalhes()
 }
 
@@ -97,11 +99,8 @@ data_pipe <- load_acordo_file(ex_file) |>
   partition_acordos() |>
   mutate(blocos = map(acordo_full_data, partition_acordos_l2)) |>
   select(-acordo_full_data) |>
-  unnest_wider(blocos) |>
-  mutate(detalhes = map(cells, tidy_det_acordos)) |> 
-  #unnest_longer(c(name, cells)) |>
-  #rename(info = name) |>
-  unnest_wider(detalhes)
+  mutate(detalhes = map(blocos, tidy_det_acordos)) |> 
+  unnest(detalhes)
 
 # teste parcial
 #TODO: COBRANÇAS
@@ -119,3 +118,5 @@ ex_detalhe |>
          efetuado_em = lubridate::dmy(efetuado_em))
   # pegar pares de linhas e separar em 2 colunas
 data_pipe$name[1]
+
+
