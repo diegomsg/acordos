@@ -130,6 +130,33 @@ tidy_cob_acordos <- function(blocos) {
     tidy_cobrancas()
 }
 
+tidy_parcelas <- function(cellls) {
+  # arruma bloco parcelas
+  # 1 linha de saída, ou múltiplas nested
+  check_block(cellls, "Parcelas do acordo")
+  lastrow <- max(cellls$row)
+  cellls |>
+    slice(-1) |>
+    filter(row < lastrow) |> 
+    behead(direction = "up", header) |> 
+    select(row, data_type, numeric, character, header) |>
+    spatter(header) |> 
+    select(-row) |>
+    janitor::clean_names() |>
+    mutate(across(c(liquidacao, vencimento), lubridate::dmy),
+           across(c(emitido, pago), ~readr::parse_number(.x, locale = br_locale))) |>
+    relocate(numero, vencimento, emitido, observacao, liquidacao, pago) |>
+    nest(parcelas = everything())
+}
+
+tidy_parc_acordos <- function(blocos) {
+  # arruma bloco parcelas a partir de blocos em nested list of tbl
+  # 1 tbl = 1 line
+  pull(blocos, cells) |>
+    list_pick(3) |>
+    tidy_parcelas()
+}
+
 # example -----------------------------------------------------------------
 
 files <- fs::path("data") |>
@@ -147,8 +174,11 @@ data_pipe <- load_acordo_file(ex_file) |>
   mutate(blocos = map(acordo_full_data, partition_acordos_l2)) |>
   select(-acordo_full_data) |>
   mutate(detalhes = map(blocos, tidy_det_acordos),
-         cobrancas = map(blocos, tidy_cob_acordos)) |> 
+         cobrancas = map(blocos, tidy_cob_acordos),
+         parcelas = map(blocos, tidy_parc_acordos)) |> 
   unnest(c(detalhes, cobrancas))
+  
+  
 
 # teste parcial
 #TODO: PARCELAS
@@ -157,30 +187,19 @@ ex_parcelas <- data_pipe$blocos[[1]] |>
   list_pick(3)
 
 # parcelas
-check_block(ex_cobrancas, "Cobranças originais")
-ex_cobrancas |>
+check_block(ex_parcelas, "Parcelas do acordo")
+ex_parcelas |>
   slice(-1) |>
-  slice(1:(n()-5)) |> 
+  filter(row < max(ex_parcelas$row)) |> 
   behead(direction = "up", header) |> 
   select(row, data_type, numeric, character, header) |>
   spatter(header) |> 
   select(-row) |>
   janitor::clean_names() |>
-  mutate(competencia = lubridate::my(competencia),
-         composicao = as.numeric(sub(",", ".", composicao, fixed = TRUE)),
-         vencimento = lubridate::dmy(vencimento)) |>
-  fill(everything()) |> 
-  nest(cobrancas = everything()) |>
-  bind_cols(acrescimos) |> View()
+  mutate(across(c(liquidacao, vencimento), lubridate::dmy),
+         across(c(emitido, pago), ~readr::parse_number(.x, locale = br_locale))) |>
+  relocate(numero, vencimento, emitido, observacao, liquidacao, pago)
 
-acrescimos <- ex_cobrancas |>
-  slice_tail(n = 4) |>
-  behead(direction = "left", header) |>
-  select(-(row:content)) |>
-  spatter(header) |> 
-  janitor::clean_names() |>
-  select(acrescimos, total_devido) |>
-  mutate(across(everything(), ~readr::parse_number(.x, locale = br_locale)))
-data_pipe$name[1]
 
 tidy_cobrancas(ex_cobrancas)
+mutate(across(everything(), ~readr::parse_number(.x, locale = br_locale)))
