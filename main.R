@@ -24,19 +24,22 @@ acordos_dir <- fs::path("data")
 
 acordos_files <- fs::dir_ls(acordos_dir, glob = "*.xlsx")
 
-# testes com maior arquivo, múltiplos acordos no período
-acordos_max_pos <- acordos_files |> 
-  file.size() |> 
-  which.max()
-test_file <- acordos_files[acordos_max_pos]
-
 
 # tidy data ---------------------------------------------------------------
 
-df <- tibble(files = acordos_files,
-       content = map(files, ~xlsx_cells(.x) |>
-                       filter(!is_blank) |>
-                       select(sheet:character)),
-       acordo_data = map(content, split_acordos))
-
-df$acordo_data
+data_pipe <- tibble(files = acordos_files,
+                    content = map(files, load_acordo_file),
+                    blocos = map(content, partition_acordos)) |>
+  unnest(blocos) |>
+  select(-files, -content) |>
+  mutate(blocos = map(acordo_full_data, partition_acordos_l2)) |>
+  select(-acordo_full_data) |>
+  mutate(detalhes = map(blocos, tidy_det_acordos),
+         cobrancas = map(blocos, tidy_cob_acordos),
+         parcelas = map(blocos, tidy_parc_acordos)) |> 
+  unnest(c(detalhes, cobrancas, parcelas)) |>
+  mutate(cobrado = map_dbl(cobrancas, ~with(.x, sum(composicao)))) |>
+  relocate(cobrado, .before = acrescimos) |>
+  mutate(total_emitido = map_dbl(parcelas, ~with(.x, sum(emitido))),
+         total_pago = map_dbl(parcelas, ~with(.x, sum(pago))))
+  
