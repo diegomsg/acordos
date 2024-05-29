@@ -114,8 +114,9 @@ tidy_cobrancas <- function(cells) {
     spatter(header) |> 
     select(-row) |>
     janitor::clean_names() |>
+    filter(!is.na(composicao)) |>
     mutate(competencia = lubridate::my(competencia),
-           composicao = as.numeric(sub(",", ".", composicao, fixed = TRUE)),
+           composicao = readr::parse_number(composicao, locale = br_locale),
            vencimento = lubridate::dmy(vencimento)) |>
     fill(everything()) |> 
     nest(cobrancas = everything()) |>
@@ -133,7 +134,9 @@ tidy_cob_acordos <- function(blocos) {
 tidy_parcelas <- function(cellls) {
   # arruma bloco parcelas
   # 1 linha de saída, ou múltiplas nested
-  check_block(cellls, "Parcelas do acordo")
+  stopifnot(
+    check_block(cellls, "Parcelas do acordo")
+  )
   lastrow <- max(cellls$row)
   cellls |>
     slice(-1) |>
