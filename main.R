@@ -40,6 +40,8 @@ data_pipe <- tibble(files = acordos_files,
   unnest(c(detalhes, cobrancas, parcelas)) |>
   mutate(cobrado = map_dbl(cobrancas, ~with(.x, sum(composicao)))) |>
   relocate(cobrado, .before = acrescimos) |>
-  mutate(total_emitido = map_dbl(parcelas, ~with(.x, sum(emitido))),
-         total_pago = map_dbl(parcelas, ~with(.x, sum(pago))))
-  
+  mutate(total_emitido = map_dbl(parcelas, ~sum(.x$emitido)),
+         total_pago = map_dbl(parcelas, ~sum(.x$pago) |> 
+                                         coalesce(0)),
+         quitado = total_pago >= total_emitido,
+         vencido = map_vec(parcelas, ~max(.x$vencimento) <= Sys.Date()) & !quitado)
