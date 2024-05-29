@@ -115,7 +115,8 @@ tidy_cobrancas <- function(cells) {
     select(-row) |>
     janitor::clean_names() |>
     filter(!is.na(composicao)) |>
-    mutate(competencia = lubridate::my(competencia),
+    mutate(numero = as.double(numero),
+           competencia = lubridate::my(competencia),
            composicao = readr::parse_number(composicao, locale = br_locale),
            vencimento = lubridate::dmy(vencimento)) |>
     fill(everything()) |> 
