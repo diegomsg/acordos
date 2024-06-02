@@ -34,8 +34,8 @@ valida_xlsx_cells <- function(tbl) {
 partition_acordos <- function(data) {
   # particiona cada arquivo de acordo em blocos de acordo individial
   stopifnot(
-    tibble = is.data.frame(data),
-    valida = valida_xlsx_cells(data)
+    "must be data frame" = is.data.frame(data),
+    "must be valid" = valida_xlsx_cells(data)
     )
   l1_corners_text <- c(stringr::regex("Acordo \\d+"))
   l1_corners <- filter(data, stringr::str_detect(character, l1_corners_text))
@@ -46,8 +46,8 @@ partition_acordos <- function(data) {
 partition_acordos_l2 <- function(data) {
   # particiona cada conjunto de acordo nos 4 blocos
   stopifnot(
-    tibble = is.data.frame(data),
-    valida = valida_xlsx_cells(data)
+    "must be data frame" = is.data.frame(data),
+    "must be valid" = valida_xlsx_cells(data)
   )
 
   l2_corners_text <- c("Detalhes", "Cobranças originais", "Parcelas do acordo")
@@ -65,7 +65,7 @@ tidy_detalhes <- function(cells) {
   # arruma bloco detalhes
   # 1 linha de saída
   stopifnot(
-    check_block(cells, "Detalhes")
+    "not valid block" = check_block(cells, "Detalhes")
   )
   
   cells |>
@@ -94,7 +94,7 @@ tidy_cobrancas <- function(cells) {
   # arruma bloco cobrancas
   # 1 linha de saída
   stopifnot(
-    check_block(cells, "Cobranças originais")
+    "not valid block" = check_block(cells, "Cobranças originais")
   )
   
   acrescimos <- cells |>
@@ -136,7 +136,7 @@ tidy_parcelas <- function(cellls) {
   # arruma bloco parcelas
   # 1 linha de saída, ou múltiplas nested
   stopifnot(
-    check_block(cellls, "Parcelas do acordo")
+    "not valid block" = check_block(cellls, "Parcelas do acordo")
   )
   lastrow <- max(cellls$row)
   cellls |>
