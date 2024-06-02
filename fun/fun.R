@@ -161,3 +161,31 @@ tidy_parc_acordos <- function(blocos) {
     tidy_parcelas()
 }
 
+acordos_read_folder <- function(folder) {
+  stopifnot(
+    "must be folder" = fs::is_dir(folder)
+  )
+  # read folder
+  fs::path(folder) |>
+  # read files
+    fs::dir_ls(glob = "*.xlsx") |>
+    tibble(files = _,
+           content = map(files, load_acordo_file),
+           blocos = map(content, partition_acordos)) |>
+    unnest(blocos) |>
+    select(-files, -content) |>
+    mutate(blocos = map(acordo_full_data, partition_acordos_l2)) |>
+    select(-acordo_full_data) |>
+    mutate(detalhes = map(blocos, tidy_det_acordos),
+           cobrancas = map(blocos, tidy_cob_acordos),
+           parcelas = map(blocos, tidy_parc_acordos)) |> 
+    select(-blocos) |>
+    unnest(c(detalhes, cobrancas, parcelas)) |>
+    mutate(cobrado = map_dbl(cobrancas, ~with(.x, sum(composicao)))) |>
+    relocate(cobrado, .before = acrescimos) |>
+    mutate(total_emitido = map_dbl(parcelas, ~sum(.x$emitido)),
+           total_pago = map_dbl(parcelas, ~sum(.x$pago) |> 
+                                  coalesce(0)),
+           quitado = total_pago >= total_emitido,
+           vencido = map_vec(parcelas, ~max(.x$vencimento) <= Sys.Date()) & !quitado)
+}
